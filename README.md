@@ -17,4 +17,7 @@ To apply the db migrations run:
 $ hasura migrate apply
 ```
 
-
+Launch the console - this will automatically update the metadata here if it's edited in the console
+```bash
+$ hasura console
+```
