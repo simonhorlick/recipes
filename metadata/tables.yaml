@@ -1,6 +1,18 @@
 - table:
     schema: public
     name: ingredients
+  object_relationships:
+  - name: recipeByRecipe
+    using:
+      foreign_key_constraint_on: recipe
 - table:
     schema: public
     name: recipes
+  array_relationships:
+  - name: ingredients
+    using:
+      foreign_key_constraint_on:
+        column: recipe
+        table:
+          schema: public
+          name: ingredients
