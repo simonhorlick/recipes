@@ -1,0 +1,6 @@
+- table:
+    schema: public
+    name: ingredients
+- table:
+    schema: public
+    name: recipes
