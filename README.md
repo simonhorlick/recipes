@@ -21,3 +21,8 @@ Launch the console - this will automatically update the metadata here if it's ed
 ```bash
 $ hasura console
 ```
+
+The frontend is built using Elm, to launch the dev server, run:
+```bash
+$ elm reactor
+```
