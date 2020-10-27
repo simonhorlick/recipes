@@ -8,13 +8,16 @@ import Api.Object.Recipes
 import Api.Query as Query
 import Api.Union
 import Browser
+import Browser.Navigation
 import Graphql.Document as Document
 import Graphql.Http
 import Graphql.Operation exposing (RootQuery)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import Html exposing (Html, div, pre, span, text)
+import Html exposing (..)
+import Html.Attributes exposing (..)
 import RemoteData exposing (RemoteData)
+import Url
 
 
 {-| The query that we'll send to the graphql server.
@@ -27,40 +30,41 @@ query =
 {-| The data we'll display on the UI.
 -}
 type alias MyRecipe =
-    { name : String
+    { id : Int
+    , name : String
     }
 
 
 recipeSelection : SelectionSet MyRecipe Api.Object.Recipes
 recipeSelection =
-    SelectionSet.map MyRecipe
-        Api.Object.Recipes.name
+    SelectionSet.map2 MyRecipe Api.Object.Recipes.id Api.Object.Recipes.name
 
 
 makeRequest : Cmd Msg
 makeRequest =
     query
         |> Graphql.Http.queryRequest "http://localhost:8080/v1/graphql"
-        |> Graphql.Http.send (RemoteData.fromResult >> GotResponse)
+        |> Graphql.Http.send (RemoteData.fromResult >> ListRecipesResponse)
 
 
 type alias Model =
-    RemoteData (Graphql.Http.Error (List MyRecipe)) (List MyRecipe)
+    { key : Browser.Navigation.Key
+    , url : Url.Url
+    , recipes : RemoteData (Graphql.Http.Error (List MyRecipe)) (List MyRecipe)
+    }
 
 
-type
-    Msg
-    -- The graphql response.
-    = GotResponse Model
+type Msg
+    = ListRecipesResponse (RemoteData (Graphql.Http.Error (List MyRecipe)) (List MyRecipe))
+    | LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
 
 
 {-| Start off the graphql call as soon as the application loads.
 -}
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( RemoteData.Loading
-    , makeRequest
-    )
+init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init flags url key =
+    ( Model key url RemoteData.NotAsked, makeRequest )
 
 
 {-| Update the model based off a message.
@@ -68,19 +72,21 @@ init _ =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotResponse result ->
-            case result of
-                RemoteData.NotAsked ->
-                    ( result, Cmd.none )
+        LinkClicked urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Browser.Navigation.pushUrl model.key (Url.toString url) )
 
-                RemoteData.Loading ->
-                    ( result, Cmd.none )
+                Browser.External href ->
+                    ( model, Browser.Navigation.load href )
 
-                RemoteData.Failure e ->
-                    ( result, Cmd.none )
+        UrlChanged url ->
+            ( { model | url = url }
+            , Cmd.none
+            )
 
-                RemoteData.Success a ->
-                    ( result, Cmd.none )
+        ListRecipesResponse result ->
+            ( { model | recipes = result }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -88,9 +94,9 @@ subscriptions model =
     Sub.none
 
 
-view : Model -> Html Msg
-view model =
-    case model of
+renderRecipesList : RemoteData e (List MyRecipe) -> Html msg
+renderRecipesList recipes =
+    case recipes of
         RemoteData.NotAsked ->
             text "Not yet requested"
 
@@ -100,15 +106,34 @@ view model =
         RemoteData.Loading ->
             text "Loading..."
 
-        RemoteData.Success recipes ->
-            div [] (List.map (\recipe -> div [] [ text recipe.name ]) recipes)
+        RemoteData.Success recipesList ->
+            ul []
+                ([ viewLink "/recipes" ] ++ List.map (\recipe -> li [] [ a [ href ("/recipes/" ++ String.fromInt recipe.id) ] [ text recipe.name ] ]) recipesList)
+
+
+view : Model -> Browser.Document Msg
+view model =
+    { title = "URL Interceptor"
+    , body =
+        [ text "The current URL is: "
+        , b [] [ text (Url.toString model.url) ]
+        , renderRecipesList model.recipes
+        ]
+    }
+
+
+viewLink : String -> Html msg
+viewLink path =
+    li [] [ a [ href path ] [ text path ] ]
 
 
 main : Program () Model Msg
 main =
-    Browser.element
+    Browser.application
         { init = init
+        , view = view
         , update = update
         , subscriptions = subscriptions
-        , view = view
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         }
