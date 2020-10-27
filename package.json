@@ -2,6 +2,6 @@
   "name": "recipes",
   "version": "1.0.0",
   "scripts": {
-    "api": "elm-graphql http://localhost:8080/v1/graphql --base Recipes"
+    "api": "elm-graphql http://localhost:8080/v1/graphql --base Api"
   }
 }

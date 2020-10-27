@@ -11,13 +11,14 @@ import Graphql.Http
 import Graphql.Operation exposing (RootQuery)
 import Graphql.OptionalArgument exposing (OptionalArgument(..))
 import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
-import Recipes.InputObject
-import Recipes.Interface
-import Recipes.Object
-import Recipes.Object.Ingredients as Ingredients
-import Recipes.Query as Query
-import Recipes.Union
-import Recipes.Object.Recipes
+
+import Api.InputObject
+import Api.Interface
+import Api.Object
+import Api.Object.Ingredients as Ingredients
+import Api.Query as Query
+import Api.Union
+import Api.Object.Recipes
 
 -- The query that we'll send to the graphql server.
 query : SelectionSet (List MyRecipe) RootQuery
@@ -29,10 +30,10 @@ type alias MyRecipe =
     { name : String
     }
 
-recipeSelection : SelectionSet MyRecipe Recipes.Object.Recipes
+recipeSelection : SelectionSet MyRecipe Api.Object.Recipes
 recipeSelection =
     SelectionSet.map MyRecipe
-        Recipes.Object.Recipes.name
+        Api.Object.Recipes.name
 
 makeRequest : Cmd Msg
 makeRequest =
@@ -54,6 +55,7 @@ init _ =
   , makeRequest
   )
 
+-- Update the model based off a message.
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
