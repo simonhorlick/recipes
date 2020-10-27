@@ -18,6 +18,22 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import RemoteData exposing (RemoteData)
 import Url
+import Url.Parser exposing ((</>), Parser, int, map, oneOf, parse, s, string, top)
+
+
+{-| The routes that this single-page-app accepts.
+-}
+type Route
+    = Home
+    | Recipe Int
+
+
+routeParser : Parser (Route -> a) a
+routeParser =
+    oneOf
+        [ Url.Parser.map Home (Url.Parser.s "recipes")
+        , Url.Parser.map Recipe (Url.Parser.s "recipes" </> Url.Parser.int)
+        ]
 
 
 {-| The query that we'll send to the graphql server.
@@ -49,7 +65,7 @@ makeRequest =
 
 type alias Model =
     { key : Browser.Navigation.Key
-    , url : Url.Url
+    , route : Maybe Route
     , recipes : RemoteData (Graphql.Http.Error (List MyRecipe)) (List MyRecipe)
     }
 
@@ -64,7 +80,7 @@ type Msg
 -}
 init : () -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
-    ( Model key url RemoteData.NotAsked, makeRequest )
+    ( Model key (Url.Parser.parse routeParser url) RemoteData.NotAsked, makeRequest )
 
 
 {-| Update the model based off a message.
@@ -81,7 +97,7 @@ update msg model =
                     ( model, Browser.Navigation.load href )
 
         UrlChanged url ->
-            ( { model | url = url }
+            ( { model | route = Url.Parser.parse routeParser url }
             , Cmd.none
             )
 
@@ -111,12 +127,32 @@ renderRecipesList recipes =
                 ([ viewLink "/recipes" ] ++ List.map (\recipe -> li [] [ a [ href ("/recipes/" ++ String.fromInt recipe.id) ] [ text recipe.name ] ]) recipesList)
 
 
+viewRoute : Maybe Route -> Html msg
+viewRoute maybeRoute =
+    case maybeRoute of
+        Nothing ->
+            text "Invalid URL"
+
+        Just route ->
+            code [] [ text (routeToString route) ]
+
+
+routeToString : Route -> String
+routeToString route =
+    case route of
+        Home ->
+            "home"
+
+        Recipe id ->
+            "show recipe " ++ String.fromInt id
+
+
 view : Model -> Browser.Document Msg
 view model =
     { title = "URL Interceptor"
     , body =
         [ text "The current URL is: "
-        , b [] [ text (Url.toString model.url) ]
+        , viewRoute model.route
         , renderRecipesList model.recipes
         ]
     }
